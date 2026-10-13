@@ -1,0 +1,428 @@
+{
+  "name": "Guardian · 09 · Engagement Scout",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "40 8,13,19 * * *"
+            }
+          ]
+        }
+      },
+      "name": "3x daily (08:40 13:40 19:40)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "EngagementQueue",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "name": "Read EngagementQueue",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        220,
+        300
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build 2 Google searches per run (rotating), unless the queue is already full\nconst MAX_PENDING = 8;          // stop scouting while this many drafts wait for you\nconst PER_RUN_QUERIES = 2;      // 2 searches x 3 runs/day = ~180/month\n\n// EDIT ME: what kind of posts you want to comment on\nconst Q = [\n  'site:linkedin.com/posts \"business analyst\" Ireland',\n  'site:linkedin.com/posts \"product manager\" Ireland',\n  'site:linkedin.com/posts \"data analyst\" (Dublin OR Galway)',\n  'site:linkedin.com/posts \"power bi\" dashboard',\n  'site:linkedin.com/posts \"requirements gathering\"',\n  'site:linkedin.com/posts n8n automation',\n  'site:linkedin.com/posts \"AI agents\" \"business analysis\"',\n  'site:linkedin.com/posts healthtech Ireland data',\n  'site:linkedin.com/posts \"stakeholder management\" product',\n  'site:linkedin.com/posts \"data quality\" analytics',\n];\n\nconst rows = $('Read EngagementQueue').all().map(i => i.json).filter(r => r.eq_id);\nconst pending = rows.filter(r => String(r.status || '').trim().toLowerCase() === 'pending').length;\nif (pending >= MAX_PENDING) return [];\n\nconst slot = Math.floor(Date.now() / (8 * 3600e3));   // changes every run\nreturn Array.from({ length: PER_RUN_QUERIES }, (_, k) => ({ json: { q: Q[(slot * PER_RUN_QUERIES + k) % Q.length] } }));\n"
+      },
+      "name": "Build Queries",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        300
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://google.serper.dev/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ q: $json.q, gl: 'ie', hl: 'en', tbs: 'qdr:w', num: 10 }) }}",
+        "options": {}
+      },
+      "name": "Search Posts (Serper)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pick fresh LinkedIn posts from the search results\nconst PER_RUN = 3, MAX_PENDING = 8, AUTHOR_COOLDOWN_DAYS = 7;\nconst low = s => String(s || '').trim().toLowerCase();\nconst hash = s => { let h = 5381; for (const c of String(s)) h = ((h << 5) + h + c.charCodeAt(0)) >>> 0; return h.toString(36); };\n\nconst rows = $('Read EngagementQueue').all().map(i => i.json).filter(r => r.eq_id);\nconst pending = rows.filter(r => low(r.status) === 'pending').length;\nconst room = Math.max(0, Math.min(PER_RUN, MAX_PENDING - pending));\nif (!room) return [];\n\nconst seenUrl = new Set(rows.map(r => String(r.post_url || '').split('?')[0]));\nconst cutoff = Date.now() - AUTHOR_COOLDOWN_DAYS * 864e5;\nconst recentAuthors = new Set(rows.filter(r => Date.parse(r.created_at) > cutoff).map(r => low(r.author)));\n\nconst results = $input.all().flatMap(i => i.json.organic || []);\nconst out = [], used = new Set();\nfor (const r of results) {\n  const url = String(r.link || '').split('?')[0];\n  if (!/linkedin\\.com\\/posts\\//.test(url) || seenUrl.has(url) || used.has(url)) continue;\n  const text = `${r.title || ''} ${r.snippet || ''}`;\n  if (/(we'?re hiring|#hiring|job opening|apply now|job alert)/i.test(text)) continue;   // skip job ads\n  if (/tushar/i.test(url)) continue;                                                   // skip own posts\n  const slug = (url.match(/\\/posts\\/([^_/]+)/) || [])[1] || '';\n  const author = ((r.title || '').match(/^(.+?)\\s+(on LinkedIn|posted on|'s Post)/i) || [])[1]\n    || slug.replace(/-[a-z0-9]{4,}$/i, '').replace(/-/g, ' ').replace(/\\b\\w/g, c => c.toUpperCase());\n  if (recentAuthors.has(low(author))) continue;\n  used.add(url);\n  out.push({ json: {\n    eq_id: `eq-${hash(url)}`, post_url: url, author, company: '',\n    post_excerpt: String(r.snippet || r.title || '').slice(0, 500),\n    context: { author, post_excerpt: String(r.snippet || '').slice(0, 500), post_title: r.title || '',\n               note: 'Only an excerpt of the post is available. Comment on what the excerpt actually says; do not assume the rest.' },\n  } });\n  if (out.length >= room) break;\n}\nreturn out;\n"
+      },
+      "name": "Pick Posts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "name": "Loop Posts",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// One Slack message with every new comment draft\nconst posts = $('Pick Posts').all().map(i => i.json);\nif (!posts.length) return [];\nconst rows = $('Read EngagementQueue').all().map(i => i.json);  // not used for text, keeps order stable\nconst drafts = posts.map(p => {\n  const r = $('Build Queue Row').all().map(i => i.json).find(x => x.eq_id === p.eq_id);\n  return r || p;\n});\nconst lines = drafts.map((r, i) => `*${i + 1}. <${r.post_url}|${r.author || 'post'}>*\\n> ${String(r.comment_draft || '(draft failed, see sheet)').replace(/\\n/g, '\\n> ')}`);\nreturn [{ json: { text: `💬 *${drafts.length} new comment draft(s)* in EngagementQueue\\n\\n${lines.join('\\n\\n')}\\n\\nOpen the post, read it fully, tweak if needed, paste, then set status = Commented.` } }];\n"
+      },
+      "name": "Digest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "accessToken",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#agent-approvals",
+          "mode": "name"
+        },
+        "text": "={{ $json.text }}",
+        "otherOptions": {}
+      },
+      "name": "Slack: comment drafts",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1560,
+        100
+      ]
+    },
+    {
+      "parameters": {},
+      "name": "Current Post",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "task_type": "comment",
+            "context": "={{ JSON.stringify($json.context) }}",
+            "max_chars": 0,
+            "ref": "={{ $json.eq_id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "task_type",
+              "displayName": "task_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "context",
+              "displayName": "context",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "max_chars",
+              "displayName": "max_chars",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "ref",
+              "displayName": "ref",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "name": "Draft Comment",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1560,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const p = $('Current Post').first().json;\nconst d = $json;\nconst best = d.best || {};\nreturn [{ json: {\n  eq_id: p.eq_id, post_url: p.post_url, author: p.author, company: p.company,\n  post_excerpt: p.post_excerpt,\n  comment_draft: best.text || '',\n  alt_comments: (d.variants || []).map(v => v.text).filter(t => t && t !== best.text).join('\\n---\\n'),\n  pattern: best.pattern || '',\n  lint_flags: (best.flags || []).join('; '),\n  status: 'Pending', created_at: $now.setZone('Europe/Dublin').toISO(),\n  commented_at: '', author_replied: '', your_feedback: '',\n} }];\n"
+      },
+      "name": "Build Queue Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1780,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "EngagementQueue",
+          "mode": "name"
+        },
+        "options": {},
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        }
+      },
+      "name": "Append EngagementQueue",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 60
+      },
+      "name": "Wait 60s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Engagement Scout (09)\n08:40, 13:40, 19:40 Dublin. 2 Google searches (Serper, past week) for public LinkedIn posts on BA / data / product / automation topics.\nSkips: posts already queued, job ads, your own posts, same author within 7 days. Max 3 new per run, max 8 waiting.\nEach post > comment drafted by the Voice Drafter > EngagementQueue (**Pending**) > one Slack digest.\n**You** open the post, read it fully, tweak, paste, set **Commented**. Nothing is posted automatically.",
+        "height": 240,
+        "width": 620
+      },
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "3x daily (08:40 13:40 19:40)": {
+      "main": [
+        [
+          {
+            "node": "Read EngagementQueue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read EngagementQueue": {
+      "main": [
+        [
+          {
+            "node": "Build Queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Queries": {
+      "main": [
+        [
+          {
+            "node": "Search Posts (Serper)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Posts (Serper)": {
+      "main": [
+        [
+          {
+            "node": "Pick Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick Posts": {
+      "main": [
+        [
+          {
+            "node": "Loop Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Posts": {
+      "main": [
+        [
+          {
+            "node": "Digest",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Current Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Digest": {
+      "main": [
+        [
+          {
+            "node": "Slack: comment drafts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Current Post": {
+      "main": [
+        [
+          {
+            "node": "Draft Comment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft Comment": {
+      "main": [
+        [
+          {
+            "node": "Build Queue Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Queue Row": {
+      "main": [
+        [
+          {
+            "node": "Append EngagementQueue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append EngagementQueue": {
+      "main": [
+        [
+          {
+            "node": "Wait 60s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 60s": {
+      "main": [
+        [
+          {
+            "node": "Loop Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Dublin"
+  }
+}

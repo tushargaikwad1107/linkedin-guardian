@@ -1,0 +1,898 @@
+{
+  "name": "Guardian · 06 · Connection Assistant (watchlist)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 8 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Daily 08:30",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "ConnectionLog",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "name": "Read ConnectionLog",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        200,
+        300
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "JobsData",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "name": "Read Matched Jobs",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        400,
+        300
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Watchlist",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "name": "Read Watchlist",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        600,
+        300
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// EDIT ME\nconst NOTE_BUDGET_PER_MONTH = 3;   // free LinkedIn: check your real limit in the \"Add a note\" dialog\nconst DAILY_CAP = 2;                // human-scale volume\nconst MIN_SCORE = 70, NOTE_SCORE = 80;\nconst SPECULATIVE_PER_DAY = 1;      // Watchlist companies added when fewer than DAILY_CAP jobs qualify\nconst COOLDOWN_DAYS = 30;           // never the same company twice within this window\n\nconst low = s => String(s || '').trim().toLowerCase();\nconst logs = $('Read ConnectionLog').all().map(i => i.json).filter(r => r.log_id);\nconst month = new Date().toISOString().slice(0, 7);\nconst notesUsed = logs.filter(r => low(r.use_note) === 'yes'\n  && ['sent', 'accepted'].includes(low(r.status))\n  && String(r.sent_at || '').startsWith(month)).length;\nlet notesLeft = Math.max(0, NOTE_BUDGET_PER_MONTH - notesUsed);\nconst already = new Set(logs.map(r => r.job_id));\n\n// 1. Strong job matches first\nconst jobs = $('Read Matched Jobs').all().map(i => i.json)\n  .filter(j => j.job_id && Number(j.fit_score) >= MIN_SCORE && !j.outreach_status && !already.has(j.job_id))\n  .sort((a, b) => Number(b.fit_score) - Number(a.fit_score))\n  .slice(0, DAILY_CAP);\n\nconst out = jobs.map(j => {\n  const useNote = notesLeft > 0 && Number(j.fit_score) >= NOTE_SCORE;\n  if (useNote) notesLeft--;\n  return { json: { job: j, use_note: useNote ? 'yes' : 'no',\n    context: { company: j.company, role: j.title, location: j.location, why_ttg_fits: j.cv_angle, ttg_top_skills: j.top_skills,\n               job_url: j.url, relationship: 'recruiter or hiring manager for this role, not connected yet' } } };\n});\n\n// 2. Free slot? Add a Watchlist company (speculative outreach, no open role needed)\nif (out.length < DAILY_CAP) {\n  const rank = { high: 0, medium: 1, low: 2 };\n  const todayCompanies = new Set(jobs.map(j => low(j.company)));\n  const lastContact = c => {\n    const ts = logs.filter(r => low(r.company) === low(c)).map(r => Date.parse(r.created_at)).filter(t => !isNaN(t));\n    return ts.length ? Math.max(...ts) : 0;\n  };\n  const cutoff = Date.now() - COOLDOWN_DAYS * 864e5;\n  const picks = $('Read Watchlist').all().map(i => i.json)\n    .filter(w => w.company && !todayCompanies.has(low(w.company)) && lastContact(w.company) < cutoff)\n    .sort((a, b) => ((rank[low(a.priority)] ?? 3) - (rank[low(b.priority)] ?? 3)) || (lastContact(a.company) - lastContact(b.company)))\n    .slice(0, Math.min(SPECULATIVE_PER_DAY, DAILY_CAP - out.length));\n\n  for (const w of picks) {\n    out.push({ json: {\n      job: { job_id: `wl-${low(w.company).replace(/[^a-z0-9]+/g, '-')}`, company: w.company, title: 'Speculative',\n             location: w.city || 'Ireland', url: w.careers_url || w.linkedin_company_url || '', fit_score: '', speculative: true },\n      use_note: 'no',\n      context: { company: w.company, location: w.city, why_this_company: w.why,\n                 relationship: 'hiring manager for Business Analyst, Data or Product roles at this company. No open role: speculative connection, not connected yet.' } } });\n  }\n}\nreturn out;\n"
+      },
+      "name": "Pick Today's Targets",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "name": "Loop Targets",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// One Slack summary after all targets are drafted\nconst t = $(\"Pick Today's Targets\").all().map(i => i.json.job).filter(Boolean);\nif (!t.length) return [];\nconst lines = t.map(j => j.speculative ? `• ${j.company} (speculative, from Watchlist)` : `• ${j.company}: ${j.title} (fit ${j.fit_score})`);\nreturn [{ json: { text: `🤝 *Connection Assistant*: ${t.length} new draft(s) in ConnectionLog\\n${lines.join('\\n')}\\n\\nOpen the search links, find the person, send it yourself, then set status = Sent + sent_at.` } }];\n"
+      },
+      "name": "Morning Digest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1240,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "accessToken",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#agent-approvals",
+          "mode": "name"
+        },
+        "text": "={{ $json.text }}",
+        "otherOptions": {}
+      },
+      "name": "Slack: morning digest",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1460,
+        100
+      ]
+    },
+    {
+      "parameters": {},
+      "name": "Current Target",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "task_type": "connection_note",
+            "context": "={{ JSON.stringify($json.context) }}",
+            "max_chars": 0,
+            "ref": "={{ $json.job.job_id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "task_type",
+              "displayName": "task_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "context",
+              "displayName": "context",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "max_chars",
+              "displayName": "max_chars",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "ref",
+              "displayName": "ref",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "name": "Draft Connection Note",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const t = $('Current Target').first().json;\nconst j = t.job;\nconst d = $json;\nconst spec = !!j.speculative;\nconst search = s => 'https://www.linkedin.com/search/results/people/?keywords=' + encodeURIComponent(s) + '&origin=GLOBAL_SEARCH_HEADER';\nconst family = spec ? 'analytics manager'\n  : /product/i.test(j.title) ? 'product manager'\n  : /(data|analytics|bi\\b|intelligence)/i.test(j.title) ? 'analytics manager' : 'business analysis manager';\nconst best = d.best || {};\nreturn { json: {\n  log_id: `cl-${j.job_id}-${Date.now().toString(36)}`,\n  job_id: j.job_id, company: j.company, role: j.title, job_url: j.url, fit_score: j.fit_score,\n  recruiter_search_url: search(`${j.company} ${spec ? 'talent acquisition' : 'recruiter'}`),\n  manager_search_url: search(`${j.company} ${family}`),\n  use_note: t.use_note,\n  note_draft: best.text || '', note_chars: best.chars || 0,\n  alt_notes: (d.variants || []).slice(1).map(v => v.text).join('\\n---\\n'),\n  lint_flags: (best.flags || []).join('; '),\n  status: 'Pending', created_at: $now.toISO(), sent_at: '', person_name: '', person_url: '',\n  followup_draft: '', followup_status: '', your_feedback: ''\n} };\n"
+      },
+      "name": "Build Log Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "ConnectionLog",
+          "mode": "name"
+        },
+        "options": {},
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        }
+      },
+      "name": "Append ConnectionLog",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// JobsData update: only job_id + outreach_status (speculative rows simply match nothing)\nconst j = $('Current Target').first().json.job;\nreturn [{ json: { job_id: j.job_id, outreach_status: 'Drafted' } }];\n"
+      },
+      "name": "Mark Job Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2120,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "JobsData",
+          "mode": "name"
+        },
+        "options": {},
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "job_id"
+          ],
+          "schema": []
+        }
+      },
+      "name": "Mark Job Drafted",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2340,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "amount": 60
+      },
+      "name": "Wait 60s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2560,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 18 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Daily 18:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "ConnectionLog",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "name": "Read ConnectionLog (evening)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        200,
+        800
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Evening: Accepted rows get a first-message draft; Sent rows older than 7 days get flagged\nconst low = s => String(s || '').trim().toLowerCase();\nconst rows = $input.all().map(i => i.json).filter(r => r.log_id);\nconst out = [];\nfor (const r of rows) {\n  if (low(r.followup_status)) continue;               // already handled\n  if (low(r.status) === 'accepted') {\n    out.push({ json: { log_id: r.log_id, action: 'accepted',\n      context: { company: r.company, role: r.role, person_name: r.person_name || '[Name]',\n                 earlier_note: r.note_draft, relationship: 'just accepted my connection request' } } });\n  } else if (low(r.status) === 'sent') {\n    const t = Date.parse(String(r.sent_at || '').trim().replace(' ', 'T'));\n    if (!isNaN(t) && (Date.now() - t) / 864e5 >= 7) out.push({ json: { log_id: r.log_id, action: 'stale' } });\n  }\n}\nreturn out.slice(0, 10);\n"
+      },
+      "name": "Find Follow-ups",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "expression",
+        "numberOutputs": 2,
+        "output": "={{ ['accepted', 'stale'].indexOf($json.action) }}"
+      },
+      "name": "Route (0 accepted · 1 stale)",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        600,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "name": "Loop Accepted",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        820,
+        700
+      ]
+    },
+    {
+      "parameters": {},
+      "name": "Current Follow-up",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "task_type": "post_accept_message",
+            "context": "={{ JSON.stringify($json.context) }}",
+            "max_chars": 0,
+            "ref": "={{ $json.log_id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "task_type",
+              "displayName": "task_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "context",
+              "displayName": "context",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "max_chars",
+              "displayName": "max_chars",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "ref",
+              "displayName": "ref",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "name": "Draft First Message",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1260,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cur = $('Current Follow-up').first().json;\nconst best = $json.best || {};\nreturn [{ json: { log_id: cur.log_id, followup_draft: best.text || '', followup_status: best.text ? 'Draft ready' : 'Draft failed' } }];\n"
+      },
+      "name": "Set Follow-up Draft",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1480,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "ConnectionLog",
+          "mode": "name"
+        },
+        "options": {},
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "log_id"
+          ],
+          "schema": []
+        }
+      },
+      "name": "Update ConnectionLog",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1700,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 60
+      },
+      "name": "Wait 60s (evening)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1920,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(i => ({ json: { log_id: i.json.log_id, followup_status: 'Stale: no reply in 7+ days, consider withdrawing' } }));\n"
+      },
+      "name": "Set Stale",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        820,
+        920
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "ConnectionLog",
+          "mode": "name"
+        },
+        "options": {},
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "log_id"
+          ],
+          "schema": []
+        }
+      },
+      "name": "Update ConnectionLog (stale)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1040,
+        920
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Connection Assistant (06)\n**08:30**: top matched jobs (70+, max 2/day) get a drafted note. Fewer than 2? One **Watchlist** company fills the slot (High first, 30-day cooldown, role = Speculative). Rows land in ConnectionLog as **Pending** with people-search links. 60s wait between drafts (Groq limit).\n**18:00**: rows you set to **Accepted** get a first-message draft. **Sent** for 7+ days > flagged stale.\nYou find the person and send it yourself, then set status + sent_at.",
+        "height": 240,
+        "width": 640
+      },
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Daily 08:30": {
+      "main": [
+        [
+          {
+            "node": "Read ConnectionLog",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read ConnectionLog": {
+      "main": [
+        [
+          {
+            "node": "Read Matched Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Matched Jobs": {
+      "main": [
+        [
+          {
+            "node": "Read Watchlist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Watchlist": {
+      "main": [
+        [
+          {
+            "node": "Pick Today's Targets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick Today's Targets": {
+      "main": [
+        [
+          {
+            "node": "Loop Targets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Targets": {
+      "main": [
+        [
+          {
+            "node": "Morning Digest",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Current Target",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Morning Digest": {
+      "main": [
+        [
+          {
+            "node": "Slack: morning digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Current Target": {
+      "main": [
+        [
+          {
+            "node": "Draft Connection Note",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft Connection Note": {
+      "main": [
+        [
+          {
+            "node": "Build Log Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Log Row": {
+      "main": [
+        [
+          {
+            "node": "Append ConnectionLog",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append ConnectionLog": {
+      "main": [
+        [
+          {
+            "node": "Mark Job Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Job Row": {
+      "main": [
+        [
+          {
+            "node": "Mark Job Drafted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Job Drafted": {
+      "main": [
+        [
+          {
+            "node": "Wait 60s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 60s": {
+      "main": [
+        [
+          {
+            "node": "Loop Targets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily 18:00": {
+      "main": [
+        [
+          {
+            "node": "Read ConnectionLog (evening)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read ConnectionLog (evening)": {
+      "main": [
+        [
+          {
+            "node": "Find Follow-ups",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Follow-ups": {
+      "main": [
+        [
+          {
+            "node": "Route (0 accepted · 1 stale)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route (0 accepted · 1 stale)": {
+      "main": [
+        [
+          {
+            "node": "Loop Accepted",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set Stale",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Accepted": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Current Follow-up",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Current Follow-up": {
+      "main": [
+        [
+          {
+            "node": "Draft First Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft First Message": {
+      "main": [
+        [
+          {
+            "node": "Set Follow-up Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Follow-up Draft": {
+      "main": [
+        [
+          {
+            "node": "Update ConnectionLog",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update ConnectionLog": {
+      "main": [
+        [
+          {
+            "node": "Wait 60s (evening)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 60s (evening)": {
+      "main": [
+        [
+          {
+            "node": "Loop Accepted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Stale": {
+      "main": [
+        [
+          {
+            "node": "Update ConnectionLog (stale)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Dublin"
+  }
+}

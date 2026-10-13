@@ -1,0 +1,434 @@
+{
+  "name": "Guardian · 08 · Content Studio",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "20 7-22 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Hourly 07:20-22:20",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "ContentQueue",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "name": "Read ContentQueue",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        220,
+        300
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Feedback",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "name": "Read Feedback",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        440,
+        300
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Plan: LinkedIn Guardian build series, one episode at a time (max 1 draft per run)\nconst TZ = 'Europe/Dublin';\nconst MAX_OPEN_DRAFTS = 2;\nconst IMAGES = 'https://drive.google.com/drive/folders/YOUR_GOOGLE_ID-';\nconst PILLAR = 'Guardian series';\n\n// EDIT ME: episodes in order. \"facts\" = what really happened; the drafter may only use these + PROJECT FACTS.\nconst EPISODES = [\n  { topic: 'Why I started building LinkedIn Guardian',\n    facts: 'Job hunting in Ireland for Business Analyst, Data Analyst and Associate PM roles meant checking many job sites and alert emails by hand. I wanted one system that finds jobs, scores them against my CV and drafts outreach, but never sends anything without my approval.',\n    image: 'Screenshot: the Guardian Console dashboard tab in Google Sheets.' },\n  { topic: 'The architecture: n8n workflows, Google Sheets and Slack',\n    facts: 'Guardian is 8 n8n workflows: Error Alerter, Voice Drafter, Brain, Job Intake, Job Matcher, Connection Assistant, Publisher and Content Studio. Google Sheets is the console and database. Slack is where I approve things.',\n    image: 'Screenshot: the n8n folder listing all Guardian workflows (hide any emails).' },\n  { topic: 'Job Intake: reading job-alert emails instead of scraping',\n    facts: 'Job Intake pulls from company job boards (Greenhouse, Lever, Ashby), Jooble, Google Jobs, and the job-alert emails LinkedIn, Indeed, IrishJobs and Jobs.ie already send me. An LLM extracts each job from the email as JSON, and code checks that every title really appears in the email.',\n    image: 'Screenshot: the 04 Job Intake canvas, both paths visible.' },\n  { topic: 'The bug that made every Indeed link the same',\n    facts: 'My email cleaner cut every link at the \"?\" to remove tracking. Indeed keeps the job ID in that part, so every Indeed job got the same dead link. The fix: read the jk parameter and rebuild a clean viewjob link.',\n    image: 'Screenshot: the Clean Email code node, zoomed on the URL function.' },\n  { topic: 'One title filter for every job source',\n    facts: '\"Graduate Mechanical Engineer\" slipped into my data-analyst pipeline because the word \"graduate\" matched. I replaced the per-source checks with one shared Title Filter: a core-role list and a block list, applied to every source.',\n    image: 'Screenshot: the Title Filter code node.' },\n  { topic: 'Scoring every job 0-100 against my CV',\n    facts: 'Job Matcher reads my Master CV live from Google Docs. Score = location (3-15) + seniority (0-25, parsed from title and years of experience) + skills (0-40, judged by Gemini) + domain (0-20). Strong fits ping me in Slack.',\n    image: 'Screenshot: the JobsData tab with the fit_score column visible (hide URLs if needed).' },\n  { topic: 'Deduplicating against the sheet, not the workflow memory',\n    facts: 'The same job arrives from several sources. I dedupe against the JobsData sheet itself, so a failed run never loses or repeats jobs. Jooble job IDs were larger than JavaScript can hold exactly, so I take the ID from the URL instead.',\n    image: 'Screenshot: the Dedupe and Keep Only New nodes on the canvas.' },\n  { topic: 'The Voice Drafter: 3 drafts and a rule-based lint',\n    facts: 'Every draft is written 3 ways, then a code-only lint checks it: no em dashes, no AI buzzwords, no numbers that are not in my fact list, correct length. If nothing passes, it retries once with the exact flags.',\n    image: 'Screenshot: the 02 Voice Drafter canvas.' },\n  { topic: 'The day my agent invented facts about me',\n    facts: 'An early draft claimed a Power BI report and jobs delivered to my LinkedIn inbox. Neither existed. I added a written list of true project facts to the prompt and a false-claim check to the lint.',\n    image: 'Screenshot: the ContentQueue row showing the Rejected draft and my feedback.' },\n  { topic: 'The Brain: a chat agent that kept calling its own tool',\n    facts: 'The Brain is an n8n AI agent with tools that read jobs, save memory and draft text. It called the drafting tool again and again, and the free Groq model hit its 8,000 tokens-per-minute limit. The fix: a clearer tool description, a cap on agent iterations, and one model per job.',\n    image: 'Screenshot: the 03 Brain canvas with its tools.' },\n  { topic: 'Living on free tiers: pacing instead of paying',\n    facts: 'Free API tiers limit tokens per minute per model. Instead of paying, I give each job its own model and pace calls with a Loop and a Wait node, one email at a time.',\n    image: 'Screenshot: the Loop Over Items and Wait nodes in Job Intake.' },\n  { topic: 'Connection Assistant: drafts, but I press send',\n    facts: 'Twice a day it picks my strongest job matches, drafts a short connection note and builds LinkedIn people-search links for the recruiter and hiring manager. I find the person and send it myself.',\n    image: 'Screenshot: the ConnectionLog tab with a Pending row (hide names).' },\n  { topic: 'Publisher: nothing goes live without Approved',\n    facts: 'The Publisher checks the ContentQueue every 15 minutes and posts only rows I marked Approved, through the official LinkedIn API, at most one post per 20 hours.',\n    image: 'Screenshot: the 07 Publisher canvas.' },\n  { topic: 'Content Studio: this series writes itself, I edit it',\n    facts: 'Content Studio drafts the next episode every hour if fewer than 2 drafts are waiting. When I reject a draft and write why, it rewrites it using my reason and logs the feedback.',\n    image: 'Screenshot: the 08 Content Studio canvas.' },\n  { topic: 'Knowing when it breaks: Error Alerter',\n    facts: 'Every workflow sends failures to one Error Alerter, which posts to Slack and logs to the sheet, so a silent failure cannot hide.',\n    image: 'Screenshot: a Slack error alert (hide any keys).' },\n];\n\nconst rows = $('Read ContentQueue').all().map(i => i.json).filter(r => r.post_id);\nconst fb = $('Read Feedback').all().map(i => i.json)\n  .filter(r => String(r.item_type || '').toLowerCase() === 'post' && r.reason);\nconst lessons = fb.slice(-8).map(r => `- ${r.reason}`).join('\\n');\n\nconst st = r => String(r.status || '').trim().toLowerCase();\nconst low = s => String(s || '').trim().toLowerCase();\nconst used = new Set(rows.filter(r => st(r) !== 'rejected').map(r => low(r.topic)));\nconst newId = () => `p-${$now.setZone(TZ).toFormat('yyyyMMddHHmmss')}`;\nconst epIndex = topic => EPISODES.findIndex(e => low(e.topic) === low(topic));\nconst nextEpisode = () => EPISODES.findIndex(e => !used.has(low(e.topic)));\n\nconst buildContext = (i, note) => [\n  `SERIES: \"Building LinkedIn Guardian\", episode ${i + 1} of ${EPISODES.length}. Mention \"Episode ${i + 1}\" in the first 2 lines.`,\n  `TOPIC: ${EPISODES[i].topic}`,\n  `WHAT REALLY HAPPENED (use only this and PROJECT FACTS): ${EPISODES[i].facts}`,\n  note || '',\n  'RULES FOR THIS SERIES: write only about building LinkedIn Guardian. Do NOT mention HaystackAnalytics, AI Variant, internships, past jobs or any MY FACTS item. One concrete detail, one lesson, simple English.',\n  'AUDIENCE: hiring managers, analysts, product people and automation builders in Ireland.',\n  lessons ? `PAST REJECTION REASONS FROM TUSHAR (do not repeat these mistakes):\\n${lessons}` : '',\n].filter(Boolean).join('\\n\\n');\n\nconst plan = (mode, i, note, parent) => [{ json: {\n  mode, post_id: newId(), pillar: PILLAR, topic: EPISODES[i].topic,\n  image_brief: EPISODES[i].image, images_folder: IMAGES,\n  parent_post_id: parent ? parent.post_id : '',\n  parent_reason: parent ? String(parent.your_feedback || '').trim() : '',\n  context: buildContext(i, note),\n} }];\n\n// 1. A rejected post always gets handled first\nconst rejected = rows.find(r => st(r) === 'rejected');\nif (rejected) {\n  const reason = String(rejected.your_feedback || '').trim() || '(no reason given, so change the angle and the hook completely)';\n  let i = epIndex(rejected.topic);\n  if (i === -1) {\n    // not part of the series: replace it with the next episode\n    i = nextEpisode();\n    if (i === -1) i = 0;\n    return plan('redraft', i, `Tushar rejected an earlier post. His reason: ${reason}`, rejected);\n  }\n  const note = `REWRITE. Tushar rejected this earlier draft of the episode:\\n<<<\\n${String(rejected.draft || '').slice(0, 1500)}\\n>>>\\nHis reason: ${reason}\\nWrite a NEW version. Do not reuse its hook, structure or examples.`;\n  return plan('redraft', i, note, rejected);\n}\n\n// 2. Otherwise keep the queue topped up with the next episode\nif (rows.filter(r => st(r) === 'draft').length >= MAX_OPEN_DRAFTS) return [];\nconst i = nextEpisode();\nif (i === -1) return [];   // series finished: add more EPISODES above\nreturn plan('new', i, '', null);\n"
+      },
+      "name": "Plan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "task_type": "post",
+            "context": "={{ $json.context }}",
+            "max_chars": 0,
+            "ref": "={{ $json.post_id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "task_type",
+              "displayName": "task_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "context",
+              "displayName": "context",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "max_chars",
+              "displayName": "max_chars",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "ref",
+              "displayName": "ref",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "name": "Draft Post (Voice Drafter)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        880,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Turn the Voice Drafter result into a ContentQueue row\nconst plan = $('Plan').first().json;\nconst r = $input.first().json;\nconst best = r.best || {};\nconst text = String(best.text || r.best_draft || '').trim();\nif (!text) throw new Error('Voice Drafter returned no draft for ' + plan.post_id);\nconst alts = (r.variants || []).map(v => v.text).filter(t => t && t.trim() !== text).join('\\n---\\n');\nconst flags = best.flags || r.lint_flags || [];\nreturn [{ json: {\n  post_id: plan.post_id,\n  pillar: plan.pillar,\n  topic: plan.topic,\n  scheduled_for: '',\n  draft: text,\n  chars: text.length,\n  alt_drafts: alts.slice(0, 40000),\n  lint_flags: Array.isArray(flags) ? flags.join('; ') : String(flags),\n  status: 'Draft',\n  approved_at: '',\n  posted_at: '',\n  linkedin_post_urn: '',\n  your_feedback: '',\n  image_brief: plan.image_brief,\n  image_file: '',\n} }];\n"
+      },
+      "name": "Build Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "ContentQueue",
+          "mode": "name"
+        },
+        "options": {},
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        }
+      },
+      "name": "Append ContentQueue",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1320,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "accessToken",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#agent-approvals",
+          "mode": "name"
+        },
+        "text": "=📝 *New post draft* `{{ $('Build Row').first().json.post_id }}` · {{ $('Build Row').first().json.pillar }}{{ $('Plan').first().json.mode === 'redraft' ? ' (rewrite of a rejected post)' : '' }}\n*Topic:* {{ $('Build Row').first().json.topic }}\n\n{{ $('Build Row').first().json.draft }}\n\n🖼 *Image:* {{ $('Build Row').first().json.image_brief }}\nDrop it in <https://drive.google.com/drive/folders/YOUR_GOOGLE_ID-|Guardian Images> named `{{ $('Build Row').first().json.post_id }}.png`\n\n✅ Approve: status = Approved in ContentQueue.  ❌ Reject: status = Rejected + your reason in your_feedback.",
+        "otherOptions": {}
+      },
+      "name": "Slack: new draft",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        1540,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Continue only when this run replaced a rejected post\nconst p = $('Plan').first().json;\nif (p.mode !== 'redraft' || !p.parent_post_id) return [];\nreturn [{ json: { post_id: p.parent_post_id, status: 'Redrafted' } }];\n"
+      },
+      "name": "Only Redrafts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "ContentQueue",
+          "mode": "name"
+        },
+        "options": {},
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "post_id"
+          ],
+          "schema": []
+        }
+      },
+      "name": "Mark Parent Redrafted",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1540,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log the rejection so the Brain and the Studio learn from it\nconst p = $('Plan').first().json;\nreturn [{ json: {\n  ts: $now.setZone('Europe/Dublin').toISO(),\n  item_type: 'post',\n  item_id: p.parent_post_id,\n  verdict: 'Rejected',\n  reason: p.parent_reason || '(no reason given)',\n} }];\n"
+      },
+      "name": "Feedback Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Feedback",
+          "mode": "name"
+        },
+        "options": {},
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        }
+      },
+      "name": "Log Feedback",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1980,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Content Studio (08)\nHourly 07:20-22:20 Dublin.\n1. Any **Rejected** post > rewrite it using your reason in `your_feedback` (2nd reject on a topic > new topic). Parent row becomes **Redrafted**, reason logged to **Feedback**.\n2. Else if fewer than 2 **Draft** rows > new post, pillar used least recently, unused topic.\n3. Every draft: 1-2 emoji, 3-5 hashtags, image brief, Slack ping.\nMax 1 draft per run. Nothing posts until you set **Approved**.",
+        "height": 260,
+        "width": 520
+      },
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Hourly 07:20-22:20": {
+      "main": [
+        [
+          {
+            "node": "Read ContentQueue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read ContentQueue": {
+      "main": [
+        [
+          {
+            "node": "Read Feedback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Feedback": {
+      "main": [
+        [
+          {
+            "node": "Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan": {
+      "main": [
+        [
+          {
+            "node": "Draft Post (Voice Drafter)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft Post (Voice Drafter)": {
+      "main": [
+        [
+          {
+            "node": "Build Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append ContentQueue": {
+      "main": [
+        [
+          {
+            "node": "Slack: new draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Only Redrafts": {
+      "main": [
+        [
+          {
+            "node": "Mark Parent Redrafted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Parent Redrafted": {
+      "main": [
+        [
+          {
+            "node": "Feedback Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Feedback Row": {
+      "main": [
+        [
+          {
+            "node": "Log Feedback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Row": {
+      "main": [
+        [
+          {
+            "node": "Append ContentQueue",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Only Redrafts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Dublin"
+  }
+}

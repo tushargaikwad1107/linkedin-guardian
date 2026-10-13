@@ -1,0 +1,7 @@
+tab,columns
+JobsData,"job_id,source,company,title,location,url,posted_at,description_snippet,detail_api_url,found_at,status,fit_score,cv_angle,top_skills,outreach_status,cv_keywords"
+ConnectionLog,"log_id,job_id,company,role,job_url,fit_score,recruiter_search_url,manager_search_url,use_note,note_draft,note_chars,alt_notes,lint_flags,status,created_at,sent_at,person_name,person_url,followup_draft,followup_status,your_feedback"
+ContentQueue,"post_id,pillar,topic,scheduled_for,draft,chars,alt_drafts,lint_flags,status,approved_at,posted_at,linkedin_post_urn,your_feedback,image_brief,image_file"
+EngagementQueue,"eq_id,post_url,author,company,post_excerpt,comment_draft,alt_comments,pattern,lint_flags,status,created_at,commented_at,author_replied,your_feedback"
+Watchlist,"company,greenhouse_token,linkedin_company_url,careers_url,city,priority,why,added_on"
+Feedback,"ts,item_type,item_id,verdict,reason"

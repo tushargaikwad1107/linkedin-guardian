@@ -1,0 +1,10 @@
+# never commit secrets or raw exports
+.env
+*.env
+credentials*.json
+creds*.json
+exports_raw/
+*.zip
+.DS_Store
+Thumbs.db
+__pycache__/
