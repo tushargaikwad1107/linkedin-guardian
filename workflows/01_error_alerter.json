@@ -1,0 +1,178 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Error Alerter\nSet this as the **Error Workflow** in Settings of every Guardian workflow.\nAny failure → a row in Heartbeat (+ optional Slack DM).",
+        "width": 460,
+        "color": 5
+      },
+      "id": "bcf941a8-36d7-4724-8fdf-05f52e6e5dab",
+      "name": "About",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -416,
+        -240
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "ebc0a67f-062b-4cfd-9e95-09c495ad85e5",
+      "name": "On Any Workflow Error",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -384,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const e = $input.first().json;\nconst wfName = e.workflow?.name || 'unknown';\nconst node = e.execution?.lastNodeExecuted || '?';\nconst msg = e.execution?.error?.message || 'no message';\nreturn [{ json: { ts: $now.toISO(), workflow: wfName, status: 'ERROR', detail: `node: ${node} | ${msg}`.slice(0, 400), url: e.execution?.url || '' } }];"
+      },
+      "id": "b0d90767-c7e8-42e2-a55d-967dcdbd9f5b",
+      "name": "Format Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_ID",
+          "mode": "list",
+          "cachedResultName": "Guardian Console"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Heartbeat",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "ts",
+              "displayName": "ts",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "workflow",
+              "displayName": "workflow",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "detail",
+              "displayName": "detail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "url",
+              "displayName": "url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "6d0b09a0-67fb-4bf2-aaa1-3c768313a848",
+      "name": "Append Heartbeat",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        64,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "#agent-approvals"
+        },
+        "text": "=:rotating_light: Guardian error in *{{ $json.workflow }}*\n{{ $json.detail }}\n{{ $json.url }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "id": "437d6448-df33-4c09-8907-75ce745f2d0a",
+      "name": "Slack #agent-approvals",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        64,
+        176
+      ]
+    }
+  ],
+  "connections": {
+    "On Any Workflow Error": {
+      "main": [
+        [
+          {
+            "node": "Format Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Error": {
+      "main": [
+        [
+          {
+            "node": "Append Heartbeat",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Slack #agent-approvals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

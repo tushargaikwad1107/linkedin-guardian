@@ -1,5 +1,4 @@
 {
-  "name": "Guardian · 06 · Connection Assistant (watchlist)",
   "nodes": [
     {
       "parameters": {
@@ -16,13 +15,13 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        0,
-        300
-      ]
+        -432,
+        368
+      ],
+      "id": "45fd339d-64c0-4aa4-903e-3139459641d7"
     },
     {
       "parameters": {
-        "operation": "read",
         "documentId": {
           "__rl": true,
           "value": "YOUR_GOOGLE_ID",
@@ -39,14 +38,14 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        200,
-        300
+        -208,
+        368
       ],
-      "alwaysOutputData": true
+      "alwaysOutputData": true,
+      "id": "51ad4bc7-c5bd-4e6f-b9be-43fcf15247d9"
     },
     {
       "parameters": {
-        "operation": "read",
         "documentId": {
           "__rl": true,
           "value": "YOUR_GOOGLE_ID",
@@ -63,15 +62,15 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        400,
-        300
+        16,
+        368
       ],
       "alwaysOutputData": true,
-      "executeOnce": true
+      "executeOnce": true,
+      "id": "7eb670a0-4953-4478-8ba2-48049b25eb82"
     },
     {
       "parameters": {
-        "operation": "read",
         "documentId": {
           "__rl": true,
           "value": "YOUR_GOOGLE_ID",
@@ -88,11 +87,12 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        600,
-        300
+        240,
+        368
       ],
       "alwaysOutputData": true,
-      "executeOnce": true
+      "executeOnce": true,
+      "id": "269c00c0-a483-4536-93db-9b416dcc2b39"
     },
     {
       "parameters": {
@@ -102,9 +102,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        800,
-        300
-      ]
+        464,
+        368
+      ],
+      "id": "2f5f76b4-c73b-4081-8996-216b947f5cd8"
     },
     {
       "parameters": {
@@ -114,9 +115,10 @@
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
       "position": [
-        1000,
-        300
-      ]
+        688,
+        368
+      ],
+      "id": "00bdeed6-4a0b-483e-b3c0-a4c9198143dd"
     },
     {
       "parameters": {
@@ -126,18 +128,19 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1240,
-        100
-      ]
+        912,
+        176
+      ],
+      "id": "edf7264e-d640-4059-8161-18492cbb3a01"
     },
     {
       "parameters": {
-        "authentication": "accessToken",
         "select": "channel",
         "channelId": {
           "__rl": true,
           "value": "#agent-approvals",
-          "mode": "name"
+          "mode": "list",
+          "cachedResultName": "agent-approvals"
         },
         "text": "={{ $json.text }}",
         "otherOptions": {}
@@ -146,9 +149,10 @@
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.2,
       "position": [
-        1460,
-        100
-      ]
+        1136,
+        176
+      ],
+      "id": "94046f90-ca42-4f49-9666-80bcd6f67ccc"
     },
     {
       "parameters": {},
@@ -156,23 +160,25 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        1240,
-        300
-      ]
+        912,
+        368
+      ],
+      "id": "6631d391-3772-4cb3-b2e9-0a545d25deda"
     },
     {
       "parameters": {
         "workflowId": {
           "__rl": true,
-          "value": "",
-          "mode": "list"
+          "value": "YOUR_VOICE_DRAFTER_WORKFLOW_ID",
+          "mode": "list",
+          "cachedResultName": "Guardian · 02 · Voice Drafter"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
           "value": {
+            "max_chars": 0,
             "task_type": "connection_note",
             "context": "={{ JSON.stringify($json.context) }}",
-            "max_chars": 0,
             "ref": "={{ $json.job.job_id }}"
           },
           "matchingColumns": [],
@@ -225,9 +231,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        1460,
-        300
-      ]
+        1136,
+        368
+      ],
+      "id": "2a110683-b9bc-41cf-9d74-075e00b24bfb"
     },
     {
       "parameters": {
@@ -237,9 +244,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1680,
-        300
-      ]
+        1360,
+        368
+      ],
+      "id": "ed1d2ee7-340d-4945-99a9-f1ece4c1a8e1"
     },
     {
       "parameters": {
@@ -254,21 +262,22 @@
           "value": "ConnectionLog",
           "mode": "name"
         },
-        "options": {},
         "columns": {
           "mappingMode": "autoMapInputData",
           "value": {},
           "matchingColumns": [],
           "schema": []
-        }
+        },
+        "options": {}
       },
       "name": "Append ConnectionLog",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        1900,
-        300
-      ]
+        1584,
+        368
+      ],
+      "id": "f53a226e-22ea-4927-9773-2831ede9f6a6"
     },
     {
       "parameters": {
@@ -278,9 +287,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2120,
-        300
-      ]
+        1808,
+        368
+      ],
+      "id": "8638bb63-a924-411c-9373-cc22db00988b"
     },
     {
       "parameters": {
@@ -295,23 +305,268 @@
           "value": "JobsData",
           "mode": "name"
         },
-        "options": {},
         "columns": {
           "mappingMode": "autoMapInputData",
           "value": {},
           "matchingColumns": [
             "job_id"
           ],
-          "schema": []
-        }
+          "schema": [
+            {
+              "id": "job_id",
+              "displayName": "job_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "location",
+              "displayName": "location",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "url",
+              "displayName": "url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "posted_at",
+              "displayName": "posted_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "description_snippet",
+              "displayName": "description_snippet",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "detail_api_url",
+              "displayName": "detail_api_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "found_at",
+              "displayName": "found_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "fit_score",
+              "displayName": "fit_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "score_breakdown",
+              "displayName": "score_breakdown",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "verdict",
+              "displayName": "verdict",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "top_skills",
+              "displayName": "top_skills",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "gaps",
+              "displayName": "gaps",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "cv_angle",
+              "displayName": "cv_angle",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "talking_points",
+              "displayName": "talking_points",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "matched_at",
+              "displayName": "matched_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "outreach_status",
+              "displayName": "outreach_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "applied_on",
+              "displayName": "applied_on",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "cv_keywords",
+              "displayName": "cv_keywords",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
       },
       "name": "Mark Job Drafted",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        2340,
-        300
+        2032,
+        368
       ],
+      "id": "9f05a6a3-YOUR_GOOGLE_ID",
       "onError": "continueRegularOutput"
     },
     {
@@ -322,9 +577,10 @@
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        2560,
-        300
-      ]
+        2256,
+        448
+      ],
+      "id": "YOUR_GOOGLE_ID"
     },
     {
       "parameters": {
@@ -341,13 +597,13 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        0,
-        800
-      ]
+        -432,
+        832
+      ],
+      "id": "605af5e6-c996-4848-bf38-8e1eae80b446"
     },
     {
       "parameters": {
-        "operation": "read",
         "documentId": {
           "__rl": true,
           "value": "YOUR_GOOGLE_ID",
@@ -364,10 +620,11 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        200,
-        800
+        -208,
+        832
       ],
-      "alwaysOutputData": true
+      "alwaysOutputData": true,
+      "id": "99dd003c-5c9d-40b4-a037-f05408768ca7"
     },
     {
       "parameters": {
@@ -377,9 +634,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        400,
-        800
-      ]
+        16,
+        832
+      ],
+      "id": "4d15a014-3cc6-45a7-85f1-5da1ac0a6efe"
     },
     {
       "parameters": {
@@ -391,9 +649,10 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
       "position": [
-        600,
-        800
-      ]
+        240,
+        832
+      ],
+      "id": "6d328aa1-3276-41a7-b9cf-d8bb0446c81b"
     },
     {
       "parameters": {
@@ -403,9 +662,10 @@
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
       "position": [
-        820,
-        700
-      ]
+        464,
+        736
+      ],
+      "id": "df08927a-b97c-4f52-bc19-1271ae1a7946"
     },
     {
       "parameters": {},
@@ -413,23 +673,25 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        1040,
-        700
-      ]
+        688,
+        672
+      ],
+      "id": "fc64abeb-f3db-478f-8450-7d79add5538d"
     },
     {
       "parameters": {
         "workflowId": {
           "__rl": true,
-          "value": "",
-          "mode": "list"
+          "value": "YOUR_VOICE_DRAFTER_WORKFLOW_ID",
+          "mode": "list",
+          "cachedResultName": "Guardian · 02 · Voice Drafter"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
           "value": {
+            "max_chars": 0,
             "task_type": "post_accept_message",
             "context": "={{ JSON.stringify($json.context) }}",
-            "max_chars": 0,
             "ref": "={{ $json.log_id }}"
           },
           "matchingColumns": [],
@@ -482,9 +744,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        1260,
-        700
-      ]
+        912,
+        672
+      ],
+      "id": "ee10f579-6285-4979-ab84-78151bf0b809"
     },
     {
       "parameters": {
@@ -494,9 +757,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1480,
-        700
-      ]
+        1136,
+        672
+      ],
+      "id": "6f282b57-d1e5-46e5-8634-ad1af578af46"
     },
     {
       "parameters": {
@@ -511,7 +775,6 @@
           "value": "ConnectionLog",
           "mode": "name"
         },
-        "options": {},
         "columns": {
           "mappingMode": "autoMapInputData",
           "value": {},
@@ -519,15 +782,17 @@
             "log_id"
           ],
           "schema": []
-        }
+        },
+        "options": {}
       },
       "name": "Update ConnectionLog",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        1700,
-        700
-      ]
+        1360,
+        672
+      ],
+      "id": "6dca71df-5a2c-47e1-81bb-a4de55ce0abe"
     },
     {
       "parameters": {
@@ -537,9 +802,10 @@
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        1920,
-        700
-      ]
+        1584,
+        736
+      ],
+      "id": "6a06f439-e362-4bfb-9018-6b7e034b3074"
     },
     {
       "parameters": {
@@ -549,9 +815,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        820,
-        920
-      ]
+        464,
+        976
+      ],
+      "id": "6c130f53-3535-45ce-ad53-1acbc0340eb1"
     },
     {
       "parameters": {
@@ -566,7 +833,6 @@
           "value": "ConnectionLog",
           "mode": "name"
         },
-        "options": {},
         "columns": {
           "mappingMode": "autoMapInputData",
           "value": {},
@@ -574,15 +840,17 @@
             "log_id"
           ],
           "schema": []
-        }
+        },
+        "options": {}
       },
       "name": "Update ConnectionLog (stale)",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        1040,
-        920
-      ]
+        688,
+        976
+      ],
+      "id": "660c1254-7515-470f-89da-13a41b89d093"
     },
     {
       "parameters": {
@@ -594,9 +862,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        0,
-        0
-      ]
+        -432,
+        64
+      ],
+      "id": "d6325ea6-6c04-4485-9add-d3c4ebdfa6ee"
     }
   ],
   "connections": {
@@ -890,9 +1159,5 @@
         ]
       ]
     }
-  },
-  "settings": {
-    "executionOrder": "v1",
-    "timezone": "Europe/Dublin"
   }
 }

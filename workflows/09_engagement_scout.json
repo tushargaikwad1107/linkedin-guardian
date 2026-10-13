@@ -1,5 +1,4 @@
 {
-  "name": "Guardian · 09 · Engagement Scout",
   "nodes": [
     {
       "parameters": {
@@ -16,13 +15,13 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        0,
-        300
-      ]
+        -512,
+        -32
+      ],
+      "id": "dabc6e0f-3443-45ff-ac42-2eb7df25cf42"
     },
     {
       "parameters": {
-        "operation": "read",
         "documentId": {
           "__rl": true,
           "value": "YOUR_GOOGLE_ID",
@@ -39,10 +38,11 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        220,
-        300
+        -288,
+        -32
       ],
-      "alwaysOutputData": true
+      "alwaysOutputData": true,
+      "id": "e9f32ef2-72a6-4f6c-a120-7582b26772aa"
     },
     {
       "parameters": {
@@ -52,10 +52,11 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        440,
-        300
+        -64,
+        -32
       ],
-      "executeOnce": true
+      "executeOnce": true,
+      "id": "82eba23c-59e3-4f8a-b09c-9dfd459a24a6"
     },
     {
       "parameters": {
@@ -72,9 +73,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        660,
-        300
+        160,
+        -32
       ],
+      "id": "c81703b1-f151-4536-8c0d-7d517db1f6c0",
       "onError": "continueRegularOutput"
     },
     {
@@ -85,9 +87,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        880,
-        300
-      ]
+        368,
+        -32
+      ],
+      "id": "62b788cc-0e9a-45a3-9f1e-8444984b5209"
     },
     {
       "parameters": {
@@ -97,9 +100,10 @@
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
       "position": [
-        1100,
-        300
-      ]
+        592,
+        -32
+      ],
+      "id": "2a3da19f-2d1d-4d70-8f02-c17dcd4243a7"
     },
     {
       "parameters": {
@@ -109,13 +113,13 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1340,
-        100
-      ]
+        832,
+        -224
+      ],
+      "id": "811da988-b765-4e92-a71b-ecc2a3fab31e"
     },
     {
       "parameters": {
-        "authentication": "accessToken",
         "select": "channel",
         "channelId": {
           "__rl": true,
@@ -129,9 +133,10 @@
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.2,
       "position": [
-        1560,
-        100
-      ]
+        1056,
+        -224
+      ],
+      "id": "80b9c145-c8e8-48c0-9ebf-06b9cf6f84d5"
     },
     {
       "parameters": {},
@@ -139,23 +144,25 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        1340,
-        300
-      ]
+        832,
+        -32
+      ],
+      "id": "9a149eb7-f0e2-44dd-a75b-a9c643dc15b7"
     },
     {
       "parameters": {
         "workflowId": {
           "__rl": true,
-          "value": "",
-          "mode": "list"
+          "value": "YOUR_VOICE_DRAFTER_WORKFLOW_ID",
+          "mode": "list",
+          "cachedResultName": "Guardian · 02 · Voice Drafter"
         },
         "workflowInputs": {
           "mappingMode": "defineBelow",
           "value": {
+            "max_chars": 0,
             "task_type": "comment",
             "context": "={{ JSON.stringify($json.context) }}",
-            "max_chars": 0,
             "ref": "={{ $json.eq_id }}"
           },
           "matchingColumns": [],
@@ -208,9 +215,10 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        1560,
-        300
-      ]
+        1056,
+        -32
+      ],
+      "id": "c5e1de2e-d7d0-47b6-80ed-8dfefcb02086"
     },
     {
       "parameters": {
@@ -220,9 +228,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1780,
-        300
-      ]
+        1280,
+        -32
+      ],
+      "id": "YOUR_GOOGLE_ID"
     },
     {
       "parameters": {
@@ -237,21 +246,22 @@
           "value": "EngagementQueue",
           "mode": "name"
         },
-        "options": {},
         "columns": {
           "mappingMode": "autoMapInputData",
           "value": {},
           "matchingColumns": [],
           "schema": []
-        }
+        },
+        "options": {}
       },
       "name": "Append EngagementQueue",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        2000,
-        300
-      ]
+        1488,
+        -32
+      ],
+      "id": "a8a9de03-b357-4c0d-be0c-4edd411d574e"
     },
     {
       "parameters": {
@@ -261,9 +271,10 @@
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        2220,
-        300
-      ]
+        1712,
+        -32
+      ],
+      "id": "fd3e20f4-2b70-4832-932a-e637659f2fab"
     },
     {
       "parameters": {
@@ -275,9 +286,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        0,
-        0
-      ]
+        -512,
+        -336
+      ],
+      "id": "914758ad-d6ad-44de-9a33-a271661d4651"
     }
   ],
   "connections": {
@@ -420,9 +432,5 @@
         ]
       ]
     }
-  },
-  "settings": {
-    "executionOrder": "v1",
-    "timezone": "Europe/Dublin"
   }
 }

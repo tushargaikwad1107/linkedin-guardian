@@ -1,5 +1,4 @@
 {
-  "name": "Guardian · 07 · Publisher (images)",
   "nodes": [
     {
       "parameters": {
@@ -16,13 +15,13 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        0,
-        300
-      ]
+        -1200,
+        -160
+      ],
+      "id": "d216a479-4b6d-423f-a909-6e565af1a3b4"
     },
     {
       "parameters": {
-        "operation": "read",
         "documentId": {
           "__rl": true,
           "value": "YOUR_GOOGLE_ID",
@@ -39,9 +38,10 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        220,
-        300
-      ]
+        -976,
+        -160
+      ],
+      "id": "b80d750b-cc8c-4942-86ab-9fc32e144f4a"
     },
     {
       "parameters": {
@@ -51,9 +51,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        440,
-        300
-      ]
+        -752,
+        -160
+      ],
+      "id": "YOUR_GOOGLE_ID"
     },
     {
       "parameters": {
@@ -67,17 +68,17 @@
           },
           "whatToSearch": "files"
         },
-        "limit": 50,
         "options": {}
       },
       "name": "Find Image",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        660,
-        300
+        -528,
+        -160
       ],
-      "alwaysOutputData": true
+      "alwaysOutputData": true,
+      "id": "7d32da3e-c05e-4ddc-9976-69506ee2c442"
     },
     {
       "parameters": {
@@ -87,23 +88,24 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        880,
-        300
-      ]
+        -304,
+        -160
+      ],
+      "id": "f1f484d1-YOUR_GOOGLE_ID"
     },
     {
       "parameters": {
         "mode": "expression",
-        "numberOutputs": 4,
         "output": "={{ ['image', 'text', 'stamp', 'too_long'].indexOf($json.action) }}"
       },
       "name": "Route (0 image · 1 text · 2 stamp · 3 too long)",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
       "position": [
-        1100,
-        300
-      ]
+        -80,
+        -192
+      ],
+      "id": "cd9eb8c4-d4e4-456a-a62a-40032e7c47d8"
     },
     {
       "parameters": {
@@ -121,16 +123,16 @@
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        1340,
-        100
-      ]
+        144,
+        -400
+      ],
+      "id": "27a9e688-7b0d-4224-a339-06bf43b658dc"
     },
     {
       "parameters": {
-        "person": "",
+        "person": "YOUR_LINKEDIN_PERSON_ID",
         "text": "={{ $('Pick One Approved Post').first().json.draft }}",
         "shareMediaCategory": "={{ $('Image Decision').first().json.has_image ? 'IMAGE' : 'NONE' }}",
-        "binaryPropertyName": "data",
         "additionalFields": {
           "visibility": "PUBLIC"
         }
@@ -139,9 +141,10 @@
       "type": "n8n-nodes-base.linkedIn",
       "typeVersion": 1,
       "position": [
-        1560,
-        200
-      ]
+        368,
+        -336
+      ],
+      "id": "a08b0f3d-5be9-42a7-b104-b750f8676d25"
     },
     {
       "parameters": {
@@ -151,9 +154,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1780,
-        200
-      ]
+        592,
+        -336
+      ],
+      "id": "9b5220ef-659d-421a-8235-141f5b70015c"
     },
     {
       "parameters": {
@@ -168,7 +172,6 @@
           "value": "ContentQueue",
           "mode": "name"
         },
-        "options": {},
         "columns": {
           "mappingMode": "autoMapInputData",
           "value": {},
@@ -176,19 +179,20 @@
             "post_id"
           ],
           "schema": []
-        }
+        },
+        "options": {}
       },
       "name": "Update ContentQueue",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        2000,
-        200
-      ]
+        816,
+        -336
+      ],
+      "id": "2e53adf8-20ef-484b-a06d-688c892841e9"
     },
     {
       "parameters": {
-        "authentication": "accessToken",
         "select": "channel",
         "channelId": {
           "__rl": true,
@@ -202,9 +206,10 @@
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.2,
       "position": [
-        2220,
-        200
-      ]
+        1040,
+        -336
+      ],
+      "id": "9b803715-64e4-4ec6-b14f-bde4e6d5a891"
     },
     {
       "parameters": {
@@ -214,9 +219,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1340,
-        420
-      ]
+        144,
+        -96
+      ],
+      "id": "9d9d8f38-436f-468a-bede-3bee78bb436a"
     },
     {
       "parameters": {
@@ -231,7 +237,6 @@
           "value": "ContentQueue",
           "mode": "name"
         },
-        "options": {},
         "columns": {
           "mappingMode": "autoMapInputData",
           "value": {},
@@ -239,19 +244,20 @@
             "post_id"
           ],
           "schema": []
-        }
+        },
+        "options": {}
       },
       "name": "Stamp approved_at",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        1560,
-        420
-      ]
+        368,
+        -96
+      ],
+      "id": "2bd267f2-07fd-45ec-8492-38a9dc33efb1"
     },
     {
       "parameters": {
-        "authentication": "accessToken",
         "select": "channel",
         "channelId": {
           "__rl": true,
@@ -265,9 +271,10 @@
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.2,
       "position": [
-        1780,
-        420
-      ]
+        592,
+        -96
+      ],
+      "id": "93c35c45-296e-4707-a788-f42cd08fed71"
     },
     {
       "parameters": {
@@ -277,9 +284,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1340,
-        600
-      ]
+        144,
+        112
+      ],
+      "id": "8a4311da-a740-4470-ba8c-19bf07bd3de9"
     },
     {
       "parameters": {
@@ -294,7 +302,6 @@
           "value": "ContentQueue",
           "mode": "name"
         },
-        "options": {},
         "columns": {
           "mappingMode": "autoMapInputData",
           "value": {},
@@ -302,19 +309,20 @@
             "post_id"
           ],
           "schema": []
-        }
+        },
+        "options": {}
       },
       "name": "Send Back to Studio",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
       "position": [
-        1560,
-        600
-      ]
+        368,
+        112
+      ],
+      "id": "c1096866-854a-4879-94b3-bf15c39ab3a6"
     },
     {
       "parameters": {
-        "authentication": "accessToken",
         "select": "channel",
         "channelId": {
           "__rl": true,
@@ -328,9 +336,10 @@
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.2,
       "position": [
-        1780,
-        600
-      ]
+        592,
+        112
+      ],
+      "id": "71399cc4-8517-4fda-931c-ef7d95bc07d8"
     },
     {
       "parameters": {
@@ -342,9 +351,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        0,
-        0
-      ]
+        -1200,
+        -496
+      ],
+      "id": "e16a92ce-53ad-452b-957b-fc899367186a"
     }
   ],
   "connections": {
@@ -523,9 +533,5 @@
         ]
       ]
     }
-  },
-  "settings": {
-    "executionOrder": "v1",
-    "timezone": "Europe/Dublin"
   }
 }
