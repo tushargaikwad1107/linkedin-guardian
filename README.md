@@ -118,7 +118,9 @@ Running daily on my laptop; moving to an always-on Oracle Cloud VM next.
 
 **Tushar Gaikwad**, MSc Business Analytics student at Dublin Business School, based in Galway. Previously Business Analyst, then Product Manager, in B2B healthtech SaaS. Looking for Business Analyst, Data Analyst and Associate Product Manager roles in Ireland.
 
-[LinkedIn]https://www.linkedin.com/in/tushargaikwadba/
+[LinkedIn]
+
+https://www.linkedin.com/in/tushargaikwadba/
 
 ## License
 
